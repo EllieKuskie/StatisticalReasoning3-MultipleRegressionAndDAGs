@@ -1,5 +1,10 @@
-Activity 11: Statistical reasoning 3: multiple regression and DAGs
-================
+---
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# Activity 11: Statistical reasoning 3: multiple regression and DAGs
 
 Welcome! This is the third statistical reasoning activity. The goals of
 this activity are to understand how to implement DAGs in the context of
@@ -35,7 +40,7 @@ Let’s start by reading in the relevant packages
 
 ``` r
 # Run this to install some data packages
-# devtools::install_github("rmcelreath/rethinking")
+devtools::install_github("rmcelreath/rethinking")
 library(rethinking)
 
 library(brms) # for statistics
@@ -129,13 +134,15 @@ data(foxes)
 head(foxes)
 ```
 
-      group avgfood groupsize area weight
-    1     1    0.37         2 1.09   5.02
-    2     1    0.37         2 1.09   2.84
-    3     2    0.53         2 2.05   5.33
-    4     2    0.53         2 2.05   6.07
-    5     3    0.49         2 2.12   5.85
-    6     3    0.49         2 2.12   3.25
+```         
+  group avgfood groupsize area weight
+1     1    0.37         2 1.09   5.02
+2     1    0.37         2 1.09   2.84
+3     2    0.53         2 2.05   5.33
+4     2    0.53         2 2.05   6.07
+5     3    0.49         2 2.12   5.85
+6     3    0.49         2 2.12   3.25
+```
 
 From the Rethinking textbook: “The data in data(foxes) are 116 foxes
 from 30 different urban groups in England. These foxes are like street
@@ -143,7 +150,7 @@ gangs. `Group size` varies from 2 to 8 individuals. Each group maintains
 its own urban territory. Some territories are larger than others. The
 `area` variable encodes this information. Some territories also have
 more `avgfood` than others. We want to model the `weight` of each fox
-\[in kg\].” For the questions below, we will assume the following DAG is
+$$in kg$$.” For the questions below, we will assume the following DAG is
 appropriate for this system:
 
 ![fox DAG](foxDAG.jpg)
@@ -167,10 +174,10 @@ In this first part we are going to infer the total causal influence of
 area on weight. Would increasing the area available to each fox make it
 heavier (healthier)?
 
-- First, we will standardize the variables.
-- Second, we will use prior predictive simulation to check that our
-  model’s prior predictions stay within a reasonable outcome range.
-- Third, we will run and interpret the models.
+-   First, we will standardize the variables.
+-   Second, we will use prior predictive simulation to check that our
+    model’s prior predictions stay within a reasonable outcome range.
+-   Third, we will run and interpret the models.
 
 Standardize weight to mean zero and standard deviation of 1
 
@@ -274,25 +281,27 @@ Check out the summary:
 summary(food_on_area)
 ```
 
-     Family: gaussian 
-      Links: mu = identity 
-    Formula: avgfood ~ 1 + area 
-       Data: fox_dat (Number of observations: 116) 
-      Draws: 4 chains, each with iter = 4000; warmup = 2000; thin = 1;
-             total post-warmup draws = 8000
+```         
+ Family: gaussian 
+  Links: mu = identity 
+Formula: avgfood ~ 1 + area 
+   Data: fox_dat (Number of observations: 116) 
+  Draws: 4 chains, each with iter = 4000; warmup = 2000; thin = 1;
+         total post-warmup draws = 8000
 
-    Regression Coefficients:
-              Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-    Intercept    -0.00      0.04    -0.08     0.09 1.00     8149     5893
-    area          0.88      0.04     0.79     0.96 1.00     7942     6347
-
-    Further Distributional Parameters:
+Regression Coefficients:
           Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-    sigma     0.48      0.03     0.42     0.54 1.00     8250     5783
+Intercept    -0.00      0.04    -0.08     0.09 1.00     8149     5893
+area          0.88      0.04     0.79     0.96 1.00     7942     6347
 
-    Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
-    and Tail_ESS are effective sample size measures, and Rhat is the potential
-    scale reduction factor on split chains (at convergence, Rhat = 1).
+Further Distributional Parameters:
+      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+sigma     0.48      0.03     0.42     0.54 1.00     8250     5783
+
+Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+and Tail_ESS are effective sample size measures, and Rhat is the potential
+scale reduction factor on split chains (at convergence, Rhat = 1).
+```
 
 We see a fairly strong effect of area on the average amount of food.
 Because we standardized each variable by standard deviations, our units
@@ -363,25 +372,27 @@ group_on_weight <- brm(weight ~ 1 + groupsize,
 summary(group_on_weight)
 ```
 
-     Family: gaussian 
-      Links: mu = identity 
-    Formula: weight ~ 1 + groupsize 
-       Data: fox_dat (Number of observations: 116) 
-      Draws: 4 chains, each with iter = 4000; warmup = 2000; thin = 1;
-             total post-warmup draws = 8000
+```         
+ Family: gaussian 
+  Links: mu = identity 
+Formula: weight ~ 1 + groupsize 
+   Data: fox_dat (Number of observations: 116) 
+  Draws: 4 chains, each with iter = 4000; warmup = 2000; thin = 1;
+         total post-warmup draws = 8000
 
-    Regression Coefficients:
-              Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-    Intercept    -0.00      0.08    -0.16     0.16 1.00     6963     5530
-    groupsize    -0.16      0.09    -0.33     0.02 1.00     8077     6248
-
-    Further Distributional Parameters:
+Regression Coefficients:
           Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-    sigma     1.00      0.07     0.88     1.14 1.00     7612     6116
+Intercept    -0.00      0.08    -0.16     0.16 1.00     6963     5530
+groupsize    -0.16      0.09    -0.33     0.02 1.00     8077     6248
 
-    Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
-    and Tail_ESS are effective sample size measures, and Rhat is the potential
-    scale reduction factor on split chains (at convergence, Rhat = 1).
+Further Distributional Parameters:
+      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+sigma     1.00      0.07     0.88     1.14 1.00     7612     6116
+
+Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+and Tail_ESS are effective sample size measures, and Rhat is the potential
+scale reduction factor on split chains (at convergence, Rhat = 1).
+```
 
 Similar to the total effect of `avgfood` on `weight` in a univariate
 regression, we see no effect; the estimate for the slope of `groupsize`
@@ -412,26 +423,28 @@ food_direct <- brm(weight ~ 1 + avgfood + groupsize,
 summary(food_direct)
 ```
 
-     Family: gaussian 
-      Links: mu = identity 
-    Formula: weight ~ 1 + avgfood + groupsize 
-       Data: fox_dat (Number of observations: 116) 
-      Draws: 4 chains, each with iter = 4000; warmup = 2000; thin = 1;
-             total post-warmup draws = 8000
+```         
+ Family: gaussian 
+  Links: mu = identity 
+Formula: weight ~ 1 + avgfood + groupsize 
+   Data: fox_dat (Number of observations: 116) 
+  Draws: 4 chains, each with iter = 4000; warmup = 2000; thin = 1;
+         total post-warmup draws = 8000
 
-    Regression Coefficients:
-              Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-    Intercept    -0.00      0.08    -0.16     0.15 1.00     6230     5224
-    avgfood       0.48      0.18     0.13     0.83 1.00     4213     4193
-    groupsize    -0.57      0.18    -0.93    -0.21 1.00     4223     3946
-
-    Further Distributional Parameters:
+Regression Coefficients:
           Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-    sigma     0.96      0.06     0.85     1.10 1.00     6224     5055
+Intercept    -0.00      0.08    -0.16     0.15 1.00     6230     5224
+avgfood       0.48      0.18     0.13     0.83 1.00     4213     4193
+groupsize    -0.57      0.18    -0.93    -0.21 1.00     4223     3946
 
-    Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
-    and Tail_ESS are effective sample size measures, and Rhat is the potential
-    scale reduction factor on split chains (at convergence, Rhat = 1).
+Further Distributional Parameters:
+      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+sigma     0.96      0.06     0.85     1.10 1.00     6224     5055
+
+Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+and Tail_ESS are effective sample size measures, and Rhat is the potential
+scale reduction factor on split chains (at convergence, Rhat = 1).
+```
 
 ------------------------------------------------------------------------
 
@@ -468,10 +481,10 @@ multiple regression suggests a different answer.
 When you have finished, remember to pull, stage, commit, and push with
 GitHub:
 
-- Pull to check for updates to the remote branch
-- Stage your edits (after saving your document!) by checking the
-  documents you’d like to push
-- Commit your changes with a commit message
-- Push your changes to the remote branch
+-   Pull to check for updates to the remote branch
+-   Stage your edits (after saving your document!) by checking the
+    documents you’d like to push
+-   Commit your changes with a commit message
+-   Push your changes to the remote branch
 
 Then submit the well-labeled PDF on Gradescope. Thanks!

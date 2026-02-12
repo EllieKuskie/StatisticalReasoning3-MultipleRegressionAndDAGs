@@ -1,0 +1,314 @@
+---
+title: "Statistical Reasoning 3 - Multiple Regression & DAGs"
+author: "Ellie Kuskie & Rachel Parsons"
+format: pdf
+editor: visual
+---
+
+# Setup
+
+```{r}
+# Run this to install some data packages
+# devtools::install_github("rmcelreath/rethinking")
+#library(rethinking)
+
+# a function to scale and center. from rethinking package
+standardize <- function(x) {
+    x <- scale(x)
+    z <- as.numeric(x)
+    attr(z,"scaled:center") <- attr(x,"scaled:center")
+    attr(z,"scaled:scale") <- attr(x,"scaled:scale")
+    return(z)
+}
+
+  library(brms) # for statistics
+library(tidyverse) # for data wrangling
+```
+
+# 1
+
+## Q1.1
+
+![](images/clipboard-311652716.png)
+
+dag { A \[pos="-0.471,-1.755"\] B \[pos="-0.426,-0.301"\] C \[pos="1.428,-0.812"\] U \[latent,pos="-2.196,-0.843"\] X \[pos="-2.202,1.547"\] Y \[pos="1.400,1.621"\] A -\> C A -\> U C -\> B C -\> Y U -\> B U -\> X X -\> Y }
+
+------------------------------------------------------------------------
+
+## Q1.2
+
+Forks
+
+-   U \<- A -\> C
+
+-   B \<- C -\> Y
+
+-   B \<- U -\> X
+
+------------------------------------------------------------------------
+
+## Q1.3
+
+Colliders
+
+-   X -\>Y \<- C
+
+-   U -\> B \<- C
+
+------------------------------------------------------------------------
+
+## Q1.4
+
+![](images/clipboard-3633021911.png)
+
+------------------------------------------------------------------------
+
+## Q1.5
+
+Paths from X to Y
+
+-   X \<- U -\> B \<- C -\> Y
+
+-   X \<- U \<- A -\> C -\> Y
+
+-   X \<- U -\> B \<- C \<- V -\> Y
+
+-   X \<- U \<- A -\> C \<- V -\> Y
+
+------------------------------------------------------------------------
+
+## Q1.6
+
+Open Paths
+
+-   X \<- U \<- A -\> C -\> Y
+
+------------------------------------------------------------------------
+
+## Q1.7
+
+We should condition on A or C to estimate the direct effect of X on Y
+
+------------------------------------------------------------------------
+
+# 2
+
+```{r}
+# Load in the fox data
+foxes <- read.csv('https://raw.githubusercontent.com/rmcelreath/rethinking/refs/heads/master/data/foxes.csv', sep = ';')
+```
+
+```{r}
+head(foxes)
+```
+
+------------------------------------------------------------------------
+
+## Q2.1
+
+Fork
+
+-   groupsize \<- avgfood -\> weight
+
+Pipe
+
+-   avgfood -\> groupsize -\> weight
+
+-   area -\> avgfood -\> weight
+
+-   area -\> avgfood -\> groupsize
+
+Collider
+
+-   avgfood -\> weight \<- groupsize
+
+------------------------------------------------------------------------
+
+## Total causal influence of area on weight
+
+```{r}
+fox_dat <- foxes %>%
+  as_tibble() %>%
+  select(area, avgfood, weight, groupsize) %>%
+  mutate(across(everything(), standardize))
+```
+
+```{r}
+n <- 1000
+priorsims <- tibble(group = seq_len(n),
+       alpha = rnorm(n, 0, 0.2), # prior for alpha
+       beta = rnorm(n, 0, 2)) %>% # prior for beta
+  expand(nesting(group, alpha, beta), # the expand function gives us all possible combinations of the arguments
+         area = seq(from = -2, to = 2, length.out = 100)) %>% # set up a range of areas
+  mutate(weight = alpha + beta * area) # calculate weight from the parameters and area
+```
+
+```{r}
+ggplot(priorsims, aes(x = area, y = weight, group = group)) +
+  geom_line(alpha = 1 / 10) +
+  labs(x = "Standardized Area", y = "Standardized Weight")
+```
+
+------------------------------------------------------------------------
+
+## Q2.2
+
+Reasonable minimum is 2 kg
+
+------------------------------------------------------------------------
+
+## Q2.3
+
+Reasonable maximum is 7 kg
+
+------------------------------------------------------------------------
+
+## Q2.4
+
+```{r}
+# get mean of fox weight
+fox_weight_mean <- mean(foxes$weight)
+# calculate fox weight standard deviation
+fox_weight_sd <- sd(foxes$weight)
+# calculate the standardized value of the "reasonable" minimum weight
+standardizedmin <- (2 - fox_weight_mean)/fox_weight_sd
+# calculate the standardized value of the "reasonable" maximum weight
+standardizedmax <- (7 - fox_weight_mean)/fox_weight_sd
+```
+
+```{r}
+ggplot(priorsims, aes(x = area, y = weight, group = group)) +
+  geom_line(alpha = 1 / 10) +
+  labs(x = "Standardized Area", y = "Standardized Weight") +
+  # added both horizontal lines
+  geom_hline(yintercept = standardizedmax) +
+  geom_hline(yintercept = standardizedmin)
+```
+
+------------------------------------------------------------------------
+
+## Q2.5
+
+My priors fit the data reasonably well as my horizontal lines are both around 2 standard deviations away from the mean. A good amount of the priors do exceed these values.
+
+## Q2.6
+
+```{r}
+n <- 1000
+priorsims <- tibble(group = seq_len(n),
+       alpha = rnorm(n, 0, 0.2), # prior for alpha
+       beta = rnorm(n, 0, 0.5)) %>% # prior for beta
+  expand(nesting(group, alpha, beta), # the expand function gives us all possible combinations of the arguments
+         area = seq(from = -2, to = 2, length.out = 100)) %>% # set up a range of areas
+  mutate(weight = alpha + beta * area) # calculate weight from the parameters and area
+```
+
+```{r}
+# remake of previous grpah from above using new priors simulation
+ggplot(priorsims, aes(x = area, y = weight, group = group)) +
+  geom_line(alpha = 1 / 10) +
+  labs(x = "Standardized Area", y = "Standardized Weight") +
+  geom_hline(yintercept = standardizedmax) +
+  geom_hline(yintercept = standardizedmin)
+```
+
+------------------------------------------------------------------------
+
+## Run Models
+
+```{r}
+food_on_area <- brm(avgfood ~ 1 + area, 
+                    data = fox_dat, 
+                    family = gaussian,
+                    # Here we set the priors that we investigated earlier
+                    prior = c(prior(normal(0, 0.2), class = Intercept),
+                              prior(normal(0, 2), class = b,),
+                              prior(exponential(1), class = sigma)),
+                    iter = 4000, warmup = 2000, chains = 4, cores = 4, seed = 1234,
+                    file = "output/food_on_area")
+```
+
+```{r}
+summary(food_on_area)
+```
+
+------------------------------------------------------------------------
+
+## Q2.7
+
+```{r}
+# new model for the affect of avgfood on weight
+food_on_weight <- brm(weight ~ 1 + avgfood, 
+                    data = fox_dat, 
+                    family = gaussian,
+                    # Here we set the priors that we investigated earlier
+                    prior = c(prior(normal(0, 0.2), class = Intercept),
+                              prior(normal(0, 2), class = b,),
+                              prior(exponential(1), class = sigma)),
+                    iter = 4000, warmup = 2000, chains = 4, cores = 4, seed = 1234,
+                    file = "output/food_on_weight")
+```
+
+```{r}
+summary(food_on_weight)
+```
+
+------------------------------------------------------------------------
+
+## Q2.8
+
+We need to condition on groupsize
+
+------------------------------------------------------------------------
+
+## Q2.9
+
+I think that as the number of foxes in a group increases, the weight of foxes will decrease. This is because with larger groups, the food will have to be split between the individuals.
+
+------------------------------------------------------------------------
+
+## Run the Model
+
+```{r}
+group_on_weight <- brm(weight ~ 1 + groupsize, 
+                       data = fox_dat, 
+                       family = gaussian,
+                       prior = c(prior(normal(0, 0.2), class = Intercept),
+                                 prior(normal(0, 0.5), class = b,),
+                                 prior(exponential(1), class = sigma)),
+                       iter = 4000, warmup = 2000, chains = 4, cores = 4, seed = 1234,
+                       file = "output/group_on_weight")
+```
+
+```{r}
+summary(group_on_weight)
+```
+
+```{r}
+food_direct <- brm(weight ~ 1 + avgfood + groupsize, 
+                   data = fox_dat,
+                   family = gaussian,
+                   prior = c(prior(normal(0, 0.2), class = Intercept),
+                             prior(normal(0, 0.5), class = b,),
+                             prior(exponential(1), class = sigma)),
+                   iter = 4000, warmup = 2000, chains = 4, cores = 4, seed = 1234,
+                   file = "output/food_direct")
+
+summary(food_direct)
+```
+
+------------------------------------------------------------------------
+
+## Q2.10a
+
+Avgfood causes an increase in weight. For every 1 unit increase in average food, weight increases by 0.47 kg. The credible interval \[0.10, 0.84\] indicates that the relationship is causal.
+
+Group size causes a decrease in weight. For every 1 increase in group size, weight decreases by 0.57 kg. The credible interval \[-0.93, -0.20\] indicates that the relationship is causal.
+
+## Q2.10b
+
+This interpretation changes from the univariate regressions because now there is a causal relationship for both variables on weight. Their effects are opposite to each other so when only one was considered, it showed no relationship.
+
+## Q2.10c
+
+A higher amount of food increases the weight of foxes because as foxes eat more, they gain more weight. A higher amount of food also affects the group size because more food can support more foxes. However, as group size increases, the same amount of food will have to support more individuals leading to a decrease in weight. I think the univariate regressions showed no effect because group size and avg food have opposite affects on weight. The multivariate analysis showed an effect because it considers the effect avgfood has on group size.
